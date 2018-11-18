@@ -38,7 +38,7 @@ public class cl_salva_log {
 	
 	static cl_salva_log gv_salva_log;
 		
-	final static String gv_table = "JSON6";
+	final static String gv_table = "JSON7";
 	final static String gv_zkurl = "localhost:2181";
 	
 	public static void main(String[] args) throws InterruptedException {
@@ -171,7 +171,8 @@ public class cl_salva_log {
 					.format("org.apache.phoenix.spark")
 					.mode("overwrite")
 					.option("table", gv_table)
-					.option("zkUrl", gv_zkurl).save();
+					.option("zkUrl", gv_zkurl)
+					.save();
 			
 			System.out.println("LOG: "+ lv_tipo +" = "+ lv_num);
 			
