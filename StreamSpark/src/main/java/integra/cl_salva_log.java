@@ -37,8 +37,7 @@ public class cl_salva_log {
 	final static Collection<String> gv_topics = Arrays.asList("BroLog");
 	
 	static cl_salva_log gv_salva_log;
-	
-	
+		
 	final static String gv_table = "JSON6";
 	final static String gv_zkurl = "localhost:2181";
 	
