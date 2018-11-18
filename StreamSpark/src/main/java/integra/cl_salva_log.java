@@ -29,6 +29,9 @@ import org.apache.spark.streaming.kafka010.KafkaUtils;
 import org.apache.spark.streaming.kafka010.LocationStrategies;
 
 public class cl_salva_log {
+		
+	final static String gv_table = "JSON9";
+	final static String gv_zkurl = "localhost:2181";
 	
 	final static String gc_conn = "conn";
 	final static String gc_dns  = "dns";
@@ -38,9 +41,6 @@ public class cl_salva_log {
 	
 	static cl_salva_log gv_salva_log;
 		
-	final static String gv_table = "JSON7";
-	final static String gv_zkurl = "localhost:2181";
-	
 	public static void main(String[] args) throws InterruptedException {
 		
 		gv_salva_log = new cl_salva_log();
@@ -111,7 +111,7 @@ public class cl_salva_log {
 			Date lv_time = new Date();
 			long lv_stamp = lv_time.getTime();				
 			
-			System.out.println("Dados:Do RDD = " + rdd.count());
+			System.out.println("Dados:Do RDD = " + rdd.count() +"\t TIME: "+lv_stamp);
 
 			SparkSession lv_sess = SparkSession.builder().config(rdd.context().getConf()).getOrCreate();
 			
@@ -123,9 +123,9 @@ public class cl_salva_log {
 			
 			m_save_log(lv_data, gc_conn, lv_stamp);
 			
-			m_save_log(lv_data, gc_dns, lv_stamp);
+			//m_save_log(lv_data, gc_dns, lv_stamp);
 			
-			m_save_log(lv_data, gc_http, lv_stamp);
+			//m_save_log(lv_data, gc_http, lv_stamp);
 			
 			//lv_data.printSchema();
 			
@@ -164,12 +164,15 @@ public class cl_salva_log {
 					.withColumnRenamed("id.resp_p", "id_resp_p")
 					.withColumn("tipo", functions.lit(lv_log))
 					.withColumn("ts_code", functions.lit(lv_stamp));
-
+			
+			//lv_json.printSchema();
+			
 			long lv_num = lv_json.count();			
 
 			lv_json.write()
 					.format("org.apache.phoenix.spark")
 					.mode("overwrite")
+					//.option("timeZone", "GMT-2")
 					.option("table", gv_table)
 					.option("zkUrl", gv_zkurl)
 					.save();
