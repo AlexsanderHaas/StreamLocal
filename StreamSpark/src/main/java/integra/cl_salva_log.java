@@ -30,7 +30,7 @@ import org.apache.spark.streaming.kafka010.LocationStrategies;
 
 public class cl_salva_log {
 		
-	final static String gv_table = "JSON18";
+	final static String gv_table = "JSON22";
 	final static String gv_zkurl = "localhost:2181";
 	
 	final static String gc_conn = "conn";
@@ -84,9 +84,9 @@ public class cl_salva_log {
 	
 	public static void m_consome_kafka(Map<String, Object> lv_kafka) throws InterruptedException {
 
-		SparkConf lv_conf = new SparkConf().setMaster("local[2]").setAppName("BroLogConn");
+		//SparkConf lv_conf = new SparkConf().setMaster("local[2]").setAppName("BroLogConn");
 
-		//SparkConf lv_conf = new SparkConf().setAppName("BroLogConn");//se for executar no submit
+		SparkConf lv_conf = new SparkConf().setAppName("BroLogConn");//se for executar no submit
 
 		// Read messages in batch of 30 seconds
 		JavaStreamingContext lv_jssc = new JavaStreamingContext(lv_conf, Durations.seconds(3));// Durations.milliseconds(10));
@@ -121,11 +121,11 @@ public class cl_salva_log {
 			
 			Dataset<Row> lv_data = lv_sess.read().json(lv_json);
 			
-			//m_save_log(lv_data, gc_conn, lv_stamp);
+			m_save_log(lv_data, gc_conn, lv_stamp);
 			
 			m_save_log(lv_data, gc_dns, lv_stamp);
 			
-			m_save_log(lv_data, gc_http, lv_stamp);
+		    m_save_log(lv_data, gc_http, lv_stamp);
 			
 			//lv_data.printSchema();
 			
@@ -163,19 +163,19 @@ public class cl_salva_log {
 					.withColumnRenamed("id.resp_h", "id_resp_h")
 					.withColumnRenamed("id.resp_p", "id_resp_p")
 					.withColumn("tipo", functions.lit(lv_log))					
-					.withColumn("ts_code", functions.lit(lv_stamp));
+					.withColumn("ts_code", functions.lit(lv_stamp))
+					.withColumn("rowid", functions.monotonically_increasing_id());
+			
 					//.withColumn("trans_depth", functions.lit(lv_stamp));
 			
 			if(!lv_tipo.equals(gc_http)) {
-				System.out.println("ENTROU NOT HTTP TRANSDETPH");
+				
 				long lv_l = 0L;
 				lv_json = lv_json.withColumn("trans_depth", functions.lit(lv_l));
-				lv_json.printSchema();
-				System.out.println("SAIU NOT HTTP TRANSDETPH");
-				
+								
 			}
 			
-			lv_json.printSchema();
+			//lv_json.printSchema();
 			//lv_json.show();
 			//long lv_num = lv_json.count();			
 
@@ -195,25 +195,15 @@ public class cl_salva_log {
 					        "id_orig_p",
 					        "id_resp_h",
 					        "id_resp_p",
-					        "uid", 
-					        "ts_double"
-					        //"trans_depth"
+					        "uid",
+					        "ts_double",					        
+					        "trans_depth",
+					        "rowId"
 						   )
 					.count();
 			
 			//lv_json.printSchema();
 			//lv_json.show();
-			
-			String gc_path_r = "/home/user/Documentos/batch_spark/";
-			
-			String lv_path = gc_path_r + "group_UID";
-			
-			Dataset<Row> lv_db = lv_json.filter(col("ts_double").equalTo(""));
-			
-			if(lv_db.count()>=1) {
-				System.out.println("LOG-NULL: " + lv_tipo + " = " + lv_db.count());
-				lv_db.show();
-			}
 			
 			lv_json = lv_json.filter(col("COUNT").gt(1));
 			
@@ -221,18 +211,11 @@ public class cl_salva_log {
 			
 			if(lv_num > 1) {
 				
-				/*lv_json.coalesce(1) // cria apenas um arquivo
-						.write().option("header", "true")
-						.mode("overwrite") // substitui o arquivo de resultado pelo
-																			// novo
-						// .json(lv_path);
-						.csv(lv_path);*/
 
 				System.out.println("LOG: " + lv_tipo + " = " + lv_num);
 
-				//lv_json.printSchema();
-				lv_json.sort(col("COUNT").desc()).show();
-				// lv_json.show();
+				
+				lv_json.sort(col("COUNT").desc()).show();			
 			
 			}
 			
