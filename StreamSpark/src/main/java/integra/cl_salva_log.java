@@ -30,7 +30,7 @@ import org.apache.spark.streaming.kafka010.LocationStrategies;
 
 public class cl_salva_log {
 		
-	final static String gv_table = "JSON22";
+	final static String gv_table = "JSON00";
 	final static String gv_zkurl = "localhost:2181";
 	
 	final static String gc_conn = "conn";
@@ -84,9 +84,9 @@ public class cl_salva_log {
 	
 	public static void m_consome_kafka(Map<String, Object> lv_kafka) throws InterruptedException {
 
-		//SparkConf lv_conf = new SparkConf().setMaster("local[2]").setAppName("BroLogConn");
+		SparkConf lv_conf = new SparkConf().setMaster("local[2]").setAppName("BroLogConn");
 
-		SparkConf lv_conf = new SparkConf().setAppName("BroLogConn");//se for executar no submit
+		//SparkConf lv_conf = new SparkConf().setAppName("BroLogConn");//se for executar no submit
 
 		// Read messages in batch of 30 seconds
 		JavaStreamingContext lv_jssc = new JavaStreamingContext(lv_conf, Durations.seconds(3));// Durations.milliseconds(10));
@@ -156,67 +156,35 @@ public class cl_salva_log {
 			
 			//lv_data.printSchema();
 			
-			Dataset<Row> lv_json = lv_data.select(lv_col)
-					.filter(col(lv_filter).isNotNull())
-					.withColumnRenamed("id.orig_h", "id_orig_h")
-					.withColumnRenamed("id.orig_p", "id_orig_p")
-					.withColumnRenamed("id.resp_h", "id_resp_h")
-					.withColumnRenamed("id.resp_p", "id_resp_p")
-					.withColumn("tipo", functions.lit(lv_log))					
-					.withColumn("ts_code", functions.lit(lv_stamp))
-					.withColumn("rowid", functions.monotonically_increasing_id());
+			Dataset<Row> lv_json;
 			
-					//.withColumn("trans_depth", functions.lit(lv_stamp));
-			
-			if(!lv_tipo.equals(gc_http)) {
-				
-				long lv_l = 0L;
-				lv_json = lv_json.withColumn("trans_depth", functions.lit(lv_l));
-								
-			}
+			lv_json = lv_data.select(lv_col)
+					         .filter(col(lv_filter).isNotNull())
+					         .withColumnRenamed("id.orig_h", "id_orig_h")
+					         .withColumnRenamed("id.orig_p", "id_orig_p")
+					         .withColumnRenamed("id.resp_h", "id_resp_h")
+					         .withColumnRenamed("id.resp_p", "id_resp_p")
+					         .withColumn("tipo", functions.lit(lv_log))					
+					         .withColumn("ts_code", functions.lit(lv_stamp))
+					         .withColumn("rowid", functions.monotonically_increasing_id());
 			
 			//lv_json.printSchema();
 			//lv_json.show();
-			//long lv_num = lv_json.count();			
-
-			lv_json.write()
-					.format("org.apache.phoenix.spark")
-					.mode("overwrite")
-					//.option("timeZone", "GMT-2")
-					.option("table", gv_table)
-					.option("zkUrl", gv_zkurl)
-					.save();
-			
-			lv_json = lv_json.groupBy(
-						    "tipo",								
-					        "ts",
-							"ts_code",	
-					        "id_orig_h",
-					        "id_orig_p",
-					        "id_resp_h",
-					        "id_resp_p",
-					        "uid",
-					        "ts_double",					        
-					        "trans_depth",
-					        "rowId"
-						   )
-					.count();
-			
-			//lv_json.printSchema();
-			//lv_json.show();
-			
-			lv_json = lv_json.filter(col("COUNT").gt(1));
-			
+					
 			long lv_num = lv_json.count();
-			
-			if(lv_num > 1) {
-				
+
+			if (lv_num > 1) {
+
+				lv_json.write()
+				       .format("org.apache.phoenix.spark")
+				       .mode("overwrite")
+				       .option("table", gv_table)
+				       .option("zkUrl", gv_zkurl).save();
 
 				System.out.println("LOG: " + lv_tipo + " = " + lv_num);
 
-				
-				lv_json.sort(col("COUNT").desc()).show();			
-			
+				lv_json.sort(col("COUNT").desc()).show();
+
 			}
 			
 		} catch (Exception e) {
