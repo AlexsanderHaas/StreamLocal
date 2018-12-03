@@ -84,9 +84,9 @@ public class cl_salva_log {
 	
 	public static void m_consome_kafka(Map<String, Object> lv_kafka) throws InterruptedException {
 
-		SparkConf lv_conf = new SparkConf().setMaster("local[2]").setAppName("BroLogConn");
+		//SparkConf lv_conf = new SparkConf().setMaster("local[2]").setAppName("BroLogConn");
 
-		//SparkConf lv_conf = new SparkConf().setAppName("BroLogConn");//se for executar no submit
+		SparkConf lv_conf = new SparkConf().setAppName("BroLogConn");//se for executar no submit
 
 		// Read messages in batch of 30 seconds
 		JavaStreamingContext lv_jssc = new JavaStreamingContext(lv_conf, Durations.seconds(3));// Durations.milliseconds(10));
