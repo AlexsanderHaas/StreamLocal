@@ -30,12 +30,19 @@ import org.apache.spark.streaming.kafka010.LocationStrategies;
 
 public class cl_salva_log {
 		
-	final static String gv_table = "JSON00";
+	final static String gv_table = "LOG";//"JSON00";
+	
+	final static String gv_devices = "BRO_DEVICES";
+	
 	final static String gv_zkurl = "localhost:2181";
 	
 	final static String gc_conn = "conn";
 	final static String gc_dns  = "dns";
 	final static String gc_http = "http";
+	final static String gc_ssh  = "ssh";
+	final static String gc_dhcp = "dhcp";
+	
+	final static String gc_devices = "known_devices";
 	
 	final static Collection<String> gv_topics = Arrays.asList("BroLog");
 	
@@ -84,9 +91,9 @@ public class cl_salva_log {
 	
 	public static void m_consome_kafka(Map<String, Object> lv_kafka) throws InterruptedException {
 
-		//SparkConf lv_conf = new SparkConf().setMaster("local[2]").setAppName("BroLogConn");
+		SparkConf lv_conf = new SparkConf().setMaster("local[2]").setAppName("BroLogConn");
 
-		SparkConf lv_conf = new SparkConf().setAppName("BroLogConn");//se for executar no submit
+		//SparkConf lv_conf = new SparkConf().setAppName("BroLogConn");//se for executar no submit
 
 		// Read messages in batch of 30 seconds
 		JavaStreamingContext lv_jssc = new JavaStreamingContext(lv_conf, Durations.seconds(3));// Durations.milliseconds(10));
@@ -109,6 +116,7 @@ public class cl_salva_log {
 		lv_lines.foreachRDD((rdd, time) -> {
 			
 			Date lv_time = new Date();
+			
 			long lv_stamp = lv_time.getTime();				
 			
 			System.out.println("Dados:Do RDD = " + rdd.count() +"\t TIME: "+lv_stamp);
@@ -126,6 +134,12 @@ public class cl_salva_log {
 			m_save_log(lv_data, gc_dns, lv_stamp);
 			
 		    m_save_log(lv_data, gc_http, lv_stamp);
+		    
+		    m_save_log(lv_data, gc_ssh, lv_stamp);
+		    
+		    m_save_log(lv_data, gc_dhcp, lv_stamp);
+		    
+		    m_save_devices(lv_data, gc_devices, lv_stamp);
 			
 			//lv_data.printSchema();
 			
@@ -136,8 +150,7 @@ public class cl_salva_log {
 		//lv_lines.print();
 		lv_jssc.start();
 		lv_jssc.awaitTermination();
-		
-		
+				
 	}
 	
 	public static void m_save_log(Dataset<Row> lv_data, String lv_tipo, long lv_stamp) {
@@ -163,18 +176,28 @@ public class cl_salva_log {
 					         .withColumnRenamed("id.orig_h", "id_orig_h")
 					         .withColumnRenamed("id.orig_p", "id_orig_p")
 					         .withColumnRenamed("id.resp_h", "id_resp_h")
-					         .withColumnRenamed("id.resp_p", "id_resp_p")
+					         .withColumnRenamed("id.resp_p", "id_resp_p")					       
 					         .withColumn("tipo", functions.lit(lv_log))					
 					         .withColumn("ts_code", functions.lit(lv_stamp))
-					         .withColumn("rowid", functions.monotonically_increasing_id());
+					         .withColumn("row_id", functions.monotonically_increasing_id());
 			
-			//lv_json.printSchema();
-			//lv_json.show();
+			if(lv_tipo.equals(gc_ssh)) {
+				lv_json = lv_json.withColumnRenamed("version", "VERSION1");
+			}
+			
+			if(lv_tipo.equals(gc_dhcp)) {
+				lv_json = lv_json.withColumnRenamed("trans_id", "TRANS_ID1");
+			}
+			
+			lv_json.printSchema();
+			lv_json.show();
 					
 			long lv_num = lv_json.count();
 
-			if (lv_num > 1) {
-
+			if (lv_num > 0) {
+				
+				try {
+					
 				lv_json.write()
 				       .format("org.apache.phoenix.spark")
 				       .mode("overwrite")
@@ -183,14 +206,59 @@ public class cl_salva_log {
 
 				System.out.println("LOG: " + lv_tipo + " = " + lv_num);
 
-				lv_json.sort(col("COUNT").desc()).show();
-
+				} catch (Exception e) {
+					System.out.println("LOG:" + lv_tipo + " Erro ao SALVAR dados no HBase: "+e);
+				}
+				
 			}
 			
 		} catch (Exception e) {
-			//System.out.println(e);
+			
 		}
 		
+	}
+	
+	public static void m_save_devices(Dataset<Row> lv_data, String lv_tipo, long lv_stamp) {
+		
+		try {						
+			
+			String lv_col;
+						
+			lv_col = lv_tipo + ".*";
+			
+			Dataset<Row> lv_json;
+			
+			lv_json = lv_data.select(lv_col)
+							 .filter(col("mac").isNotNull())
+					         .withColumn("ts_code", functions.lit(lv_stamp));
+			
+			long lv_num = lv_json.count();
+			
+			lv_json.printSchema();
+			lv_json.show();
+			
+			if (lv_num > 0) {
+				
+				try {
+				
+				lv_json.write()
+				       .format("org.apache.phoenix.spark")
+				       .mode("overwrite")
+				       .option("table", gv_devices)
+				       .option("zkUrl", gv_zkurl).save();
+
+				System.out.println("LOG: " + lv_tipo + " = " + lv_num);
+
+				} catch (Exception e) {
+					System.out.println("LOG:" + lv_tipo + " Erro ao SALVAR dados no HBase: "+e);
+				}
+				
+			}
+			
+		} catch (Exception e) {
+			
+		}
+				
 	}
 	
 }
