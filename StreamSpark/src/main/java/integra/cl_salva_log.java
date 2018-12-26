@@ -29,7 +29,9 @@ import org.apache.spark.streaming.kafka010.KafkaUtils;
 import org.apache.spark.streaming.kafka010.LocationStrategies;
 
 public class cl_salva_log {
-		
+	
+	private static int gv_submit = 1; //1=Cluster 
+	
 	final static String gv_table = "LOG";//"JSON00";
 	
 	final static String gv_devices = "BRO_DEVICES";
@@ -90,11 +92,15 @@ public class cl_salva_log {
 	}
 	
 	public static void m_consome_kafka(Map<String, Object> lv_kafka) throws InterruptedException {
-
-		SparkConf lv_conf = new SparkConf().setMaster("local[2]").setAppName("BroLogConn");
-
-		//SparkConf lv_conf = new SparkConf().setAppName("BroLogConn");//se for executar no submit
-
+		
+		SparkConf lv_conf;
+		
+		if(gv_submit == 0) {			
+			lv_conf = new SparkConf().setMaster("local[2]").setAppName("BroLogConn");
+		}else {
+			lv_conf = new SparkConf().setAppName("BroLogConn");//se for executar no submit
+		}
+		
 		// Read messages in batch of 30 seconds
 		JavaStreamingContext lv_jssc = new JavaStreamingContext(lv_conf, Durations.seconds(3));// Durations.milliseconds(10));
 																				
@@ -189,8 +195,8 @@ public class cl_salva_log {
 				lv_json = lv_json.withColumnRenamed("trans_id", "TRANS_ID1");
 			}
 			
-			lv_json.printSchema();
-			lv_json.show();
+			/*lv_json.printSchema();
+			lv_json.show();*/
 					
 			long lv_num = lv_json.count();
 
@@ -207,13 +213,13 @@ public class cl_salva_log {
 				System.out.println("LOG: " + lv_tipo + " = " + lv_num);
 
 				} catch (Exception e) {
-					System.out.println("LOG:" + lv_tipo + " Erro ao SALVAR dados no HBase: "+e);
+					System.out.println("LOG:\t" + lv_tipo + " Erro ao SALVAR dados no HBase: "+e);
 				}
 				
 			}
 			
 		} catch (Exception e) {
-			
+			//System.out.println("LOG:" + lv_tipo + " Nenhum registro a processar: "+e);
 		}
 		
 	}
@@ -234,8 +240,8 @@ public class cl_salva_log {
 			
 			long lv_num = lv_json.count();
 			
-			lv_json.printSchema();
-			lv_json.show();
+			/*lv_json.printSchema();
+			lv_json.show();*/
 			
 			if (lv_num > 0) {
 				
@@ -256,7 +262,7 @@ public class cl_salva_log {
 			}
 			
 		} catch (Exception e) {
-			
+			//System.out.println("LOG:" + lv_tipo + " Nenhum registro a processar: "+e);
 		}
 				
 	}
